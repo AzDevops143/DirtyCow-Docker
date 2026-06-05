@@ -1,0 +1,6 @@
+{
+  "name": "SecureStack",
+  "description": "Dirty COW vulnerability analysis and mitigation tracker, evaluating exploit behavior and patched code flow.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
