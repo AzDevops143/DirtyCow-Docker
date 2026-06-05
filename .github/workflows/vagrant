@@ -1,4 +1,4 @@
-name: Qemu/Vagrant CI
+name: Vagrant CI
 
 on:
   push:
@@ -14,10 +14,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     
-    - name: Install QEMU and Vagrant
+    - name: Install Vagrant
       run: |
         sudo apt-get update
-        sudo apt-get install -y qemu-system-x86 qemu-utils
         
         # Install Vagrant
         curl -fsSL https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
