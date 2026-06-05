@@ -42,3 +42,4 @@ jobs:
         path: |
           dirty_cow_exploit.log
           dirty_cow_mitigation.log
+          target.txt
