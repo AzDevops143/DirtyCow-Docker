@@ -1,4 +1,4 @@
-name: Vagrant CI (Dirty COW Test)
+name: QEMU / Vagrant CI (Dirty COW Test)
 
 on:
   push:
@@ -42,12 +42,12 @@ jobs:
             
             echo "--- Compiling and running Dirty COW inside the vulnerable VM ---"
             cd /vagrant
-            # If your script compiles and runs the exploit: 
-            # bash scripts/test_dirty_cow.sh
             
-            # For demonstration:
-            echo "Logs will be captured here." > /vagrant/dirty_cow_exploit.log
-            echo "Mitigation verified." > /vagrant/dirty_cow_mitigation.log
+            # Run the actual exploit simulation script
+            # Ensure the script has executable permissions
+            chmod +x scripts/test_dirty_cow.sh
+            bash scripts/test_dirty_cow.sh
+            
           SHELL
         end
         EOF
@@ -65,3 +65,4 @@ jobs:
         path: |
           dirty_cow_exploit.log
           dirty_cow_mitigation.log
+          target.txt
