@@ -4,7 +4,8 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import { Shield, Lock, Send, Trash2, Database, Terminal, Cpu, GitCommit, Download } from 'lucide-react';
+import { Shield, Lock, Send, Trash2, Database, Terminal, Cpu, GitCommit, Download, CloudUpload, CheckCircle2 } from 'lucide-react';
+import { initAuth, googleSignIn, getAccessToken } from './auth';
 
 export default function App() {
   const [auth, setAuth] = useState<{username: string, role: string} | null>({ username: 'admin', role: 'admin' });
@@ -14,9 +15,14 @@ export default function App() {
   const [newItem, setNewItem] = useState('');
   const [error, setError] = useState('');
   
+  const [needsAuth, setNeedsAuth] = useState(false);
+  const [driveToken, setDriveToken] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadSuccess, setUploadSuccess] = useState(false);
+  
   // Security Audit state
   const [activeTab, setActiveTab] = useState<'matrix' | 'logs' | 'architecture' | 'patch'>('matrix');
-  const [logs, setLogs] = useState<{exploit: string, mitigation: string} | null>(null);
+  const [logs, setLogs] = useState<{exploit: string, targetTxt?: string} | null>(null);
   const [logsLoading, setLogsLoading] = useState(false);
 
   const downloadLog = (content: string, filename: string) => {
@@ -60,6 +66,14 @@ export default function App() {
 
   useEffect(() => {
     fetchItems();
+
+    initAuth(
+      (user, token) => {
+        setDriveToken(token);
+        setNeedsAuth(false);
+      },
+      () => setNeedsAuth(true)
+    );
   }, []);
 
   useEffect(() => {
@@ -124,6 +138,58 @@ export default function App() {
          alert(data.message);
       }
     } catch { console.error("Delete fail"); }
+  };
+
+  const handleUploadToDrive = async () => {
+    setIsUploading(true);
+    try {
+      const token = await getAccessToken();
+      if (!token) {
+        setNeedsAuth(true);
+        // Trigger login
+        const result = await googleSignIn();
+        if (!result) {
+           setIsUploading(false);
+           return;
+        }
+      }
+
+      const activeToken = token || (await getAccessToken());
+
+      const res = await fetch('/dirty_cow_presentation.pptx');
+      const blob = await res.blob();
+      
+      const metadata = {
+        name: 'Dirty_COW_Presentation.pptx',
+        mimeType: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      };
+      
+      const form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', blob);
+
+      const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${activeToken}`
+        },
+        body: form
+      });
+      
+      if (uploadRes.ok) {
+        setUploadSuccess(true);
+        setTimeout(() => setUploadSuccess(false), 3000);
+      } else {
+        const errortext = await uploadRes.text();
+        console.error(errortext);
+        alert('Upload failed: ' + errortext);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert('Upload failed.');
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
@@ -192,6 +258,35 @@ export default function App() {
                     >
                       <GitCommit className="w-3.5 h-3.5" /> Patch Analysis
                     </button>
+                    <div className="flex gap-2 ml-auto">
+                      <button
+                        onClick={handleUploadToDrive}
+                        disabled={isUploading}
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 ${uploadSuccess ? 'text-[#7EE787] border border-[#238636]/50 bg-[#238636]/10' : 'text-[#58A6FF] hover:text-[#79C0FF] hover:bg-[#21262d]/50 border border-[#58A6FF]/30'}`}
+                        title="Upload PPTX to Google Drive"
+                      >
+                        {isUploading ? (
+                          <span className="w-3.5 h-3.5 border-2 border-[#58A6FF] border-t-transparent rounded-full animate-spin"></span>
+                        ) : uploadSuccess ? (
+                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        ) : (
+                          <CloudUpload className="w-3.5 h-3.5" />
+                        )}
+                        {uploadSuccess ? 'Uploaded!' : 'Save to Drive'}
+                      </button>
+                      <a 
+                        href="/dirty_cow_visualization.html" target="_blank"
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#21262d]/50 border border-transparent`}
+                      >
+                        Interactive Visualization ↗
+                      </a>
+                      <a 
+                        href="/dirty_cow_presentation.pptx" download
+                        className={`px-3 py-1.5 text-xs font-medium rounded transition-colors flex items-center gap-1.5 text-[#58A6FF] hover:text-[#79C0FF] hover:bg-[#21262d]/50 border border-transparent`}
+                      >
+                        <Download className="w-3.5 h-3.5" /> Student PPTX
+                      </a>
+                    </div>
                   </div>
                 </div>
                 
@@ -292,23 +387,17 @@ export default function App() {
                            <div>
                              <div className="flex justify-between items-center mb-2">
                                <div className="text-[10px] uppercase font-bold text-[#DA3633] font-mono tracking-wider">Exploit Stage Logs</div>
-                               <button onClick={() => downloadLog(logs.exploit, 'exploit_stage.log')} className="text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#30363D] p-1 rounded transition-colors flex items-center gap-1.5" title="Download Exploit Logs">
-                                 <Download className="w-3.5 h-3.5" />
-                               </button>
+                               <div className="flex gap-2">
+                                 <button onClick={() => downloadLog(logs.targetTxt || '', 'target.txt')} className="text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#30363D] px-2 py-1 rounded transition-colors flex items-center gap-1.5" title="Download Corrupted target.txt">
+                                   <Download className="w-3.5 h-3.5" /> target.txt
+                                 </button>
+                                 <button onClick={() => downloadLog(logs.exploit, 'dirty_cow_exploit.log')} className="text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#30363D] px-2 py-1 rounded transition-colors flex items-center gap-1.5" title="Download Exploit Logs">
+                                   <Download className="w-3.5 h-3.5" /> Exploit Log
+                                 </button>
+                               </div>
                              </div>
                              <div className="bg-[#0D1117] p-3 rounded border border-[#30363D] font-mono text-[10px] text-[#C9D1D9] whitespace-pre break-all overflow-x-auto leading-relaxed shadow-inner">
                                {logs.exploit}
-                             </div>
-                           </div>
-                           <div>
-                             <div className="flex justify-between items-center mb-2">
-                               <div className="text-[10px] uppercase font-bold text-[#238636] font-mono tracking-wider">Mitigation Stage Logs</div>
-                               <button onClick={() => downloadLog(logs.mitigation, 'mitigation_stage.log')} className="text-[#8B949E] hover:text-[#C9D1D9] hover:bg-[#30363D] p-1 rounded transition-colors flex items-center gap-1.5" title="Download Mitigation Logs">
-                                 <Download className="w-3.5 h-3.5" />
-                               </button>
-                             </div>
-                             <div className="bg-[#0D1117] p-3 rounded border border-[#30363D] font-mono text-[10px] text-[#7EE787] whitespace-pre break-all overflow-x-auto leading-relaxed shadow-inner">
-                               {logs.mitigation}
                              </div>
                            </div>
                         </>
