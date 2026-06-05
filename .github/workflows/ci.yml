@@ -31,15 +31,14 @@ jobs:
 
     - name: Run Exploit Simulation
       run: |
-        # Create a directory to store our logs
-        mkdir -p logs
-        
-        # Run your simulation script and output the result to a log file
+        # Run your simulation script
         # The '|| true' ensures the pipeline doesn't fail immediately if the script exits with an error
-        bash scripts/test_dirty_cow.sh > logs/simulation.log 2>&1 || true
+        bash scripts/test_dirty_cow.sh || true
 
-    - name: Upload Logs
+    - name: Upload Exploit and Mitigation Logs
       uses: actions/upload-artifact@v4
       with:
-        name: exploit-and-mitigation-logs
-        path: logs/
+        name: dirty-cow-logs
+        path: |
+          dirty_cow_exploit.log
+          dirty_cow_mitigation.log
