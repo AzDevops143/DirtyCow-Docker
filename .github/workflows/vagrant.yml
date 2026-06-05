@@ -32,10 +32,12 @@ jobs:
           config.vm.provision "shell", inline: <<-SHELL
             echo "--- Inside VM: Kernel Version ---"
             uname -r
-            cd /vagrant
+            sudo sed -i -re 's/([a-z]{2}\\.)?archive.ubuntu.com|security.ubuntu.com/old-releases.ubuntu.com/g' /etc/apt/sources.list
+            sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y gcc make
+            cp -r /vagrant/scripts /tmp/scripts
+            cd /tmp
             chmod +x scripts/test_dirty_cow.sh
             bash scripts/test_dirty_cow.sh
-            cp /tmp/target.txt /vagrant/target.txt
           SHELL
         end
         EOF
@@ -47,6 +49,13 @@ jobs:
         sudo rmmod kvm_amd || true
         sudo rmmod kvm || true
         vagrant up
+        
+    - name: Extract files from VM
+      if: always()
+      run: |
+        vagrant ssh -c "cat /tmp/dirty_cow_exploit.log" > dirty_cow_exploit.log || true
+        vagrant ssh -c "cat /tmp/dirty_cow_mitigation.log" > dirty_cow_mitigation.log || true
+        vagrant ssh -c "cat /tmp/target.txt" > target.txt || true
         
     - name: Upload VM Exploit Logs & Corrupted File
       uses: actions/upload-artifact@v4
