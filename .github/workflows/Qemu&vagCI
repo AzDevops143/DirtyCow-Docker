@@ -1,4 +1,4 @@
-name: QEMU / Vagrant CI (Dirty COW Test)
+name: Vagrant CI (Dirty COW Test)
 
 on:
   push:
