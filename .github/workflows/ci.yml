@@ -28,3 +28,18 @@ jobs:
       
     - name: Build application
       run: npm run build
+
+    - name: Run Exploit Simulation
+      run: |
+        # Create a directory to store our logs
+        mkdir -p logs
+        
+        # Run your simulation script and output the result to a log file
+        # The '|| true' ensures the pipeline doesn't fail immediately if the script exits with an error
+        bash scripts/test_dirty_cow.sh > logs/simulation.log 2>&1 || true
+
+    - name: Upload Logs
+      uses: actions/upload-artifact@v4
+      with:
+        name: exploit-and-mitigation-logs
+        path: logs/
