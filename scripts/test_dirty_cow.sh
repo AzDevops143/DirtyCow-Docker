@@ -31,5 +31,5 @@ else
 fi
 
 # Clean up
-rm -f target.txt dirty_cow_poc
+rm -f dirty_cow_poc
 echo "=== END OF DIRTY COW TEST ===" >> dirty_cow_mitigation.log
