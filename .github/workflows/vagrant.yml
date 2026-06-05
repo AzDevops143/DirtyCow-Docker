@@ -42,6 +42,10 @@ jobs:
 
     - name: Run Vagrant Environment (Exploitable)
       run: |
+        # Unload KVM modules that conflict with VirtualBox in GitHub Actions
+        sudo rmmod kvm_intel || true
+        sudo rmmod kvm_amd || true
+        sudo rmmod kvm || true
         vagrant up
         
     - name: Upload VM Exploit Logs & Corrupted File
